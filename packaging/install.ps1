@@ -39,6 +39,15 @@ if (-not $NoAutostart) {
     Write-Host "Autostart: $ShortcutPath"
 }
 
+# Add install dir to user PATH if not already present
+$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+if ($userPath -notlike "*$InstallDir*") {
+    [Environment]::SetEnvironmentVariable("Path", "$userPath;$InstallDir", "User")
+    Write-Host "Added $InstallDir to user PATH."
+}
+
 Write-Host "Installed: $Exe"
 Write-Host "Models and cache: $DataDir"
 Write-Host "OpenVML Studio will detect the runtime automatically."
+Write-Host ""
+Write-Host "Open a new terminal or restart your computer for PATH changes to take effect."
