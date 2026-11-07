@@ -13,3 +13,7 @@ pub mod voice;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const SCHEMA_VERSION: u8 = 1;
+
+#[cfg(windows)]
+#[link(name = "advapi32")]
+extern "C" {}
