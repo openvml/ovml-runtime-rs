@@ -152,9 +152,35 @@ else
     esac
 fi
 
+# Add BIN_DIR to PATH in shell config files if not already present.
+add_to_path() {
+    config_file="$1"
+    line="export PATH=\"$BIN_DIR:\$PATH\""
+    mkdir -p "$(dirname "$config_file")"
+    if [ -f "$config_file" ]; then
+        if ! grep -qF "$BIN_DIR" "$config_file" 2>/dev/null; then
+            printf '\n# OpenVML Runtime\n%s\n' "$line" >> "$config_file"
+        fi
+    else
+        printf '# OpenVML Runtime\n%s\n' "$line" > "$config_file"
+    fi
+}
+
 case ":$PATH:" in
     *":$BIN_DIR:"*) ;;
-    *) echo "Note: add $BIN_DIR to PATH to run 'ovml-runtime' from anywhere." ;;
+    *)
+        # Try common shell config files.
+        for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+            case "$(basename "$rc")" in
+                .bashrc) [ -n "${BASH_VERSION:-}" ] || [ -f "$rc" ] || continue ;;
+                .zshrc) [ -n "${ZSH_VERSION:-}" ] || [ -f "$rc" ] || continue ;;
+                .profile) [ -f "$rc" ] || continue ;;
+            esac
+            add_to_path "$rc"
+        done
+        # Also add to current session.
+        export PATH="$BIN_DIR:$PATH"
+        ;;
 esac
 
 echo "Installed: $BIN_DIR/ovml-runtime"
