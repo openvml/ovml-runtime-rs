@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             tag: linux-x86_64
           - os: windows-latest
             tag: windows-x86_64
@@ -28,15 +28,15 @@ jobs:
             tag: macos-arm64
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v3
 
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
@@ -115,12 +115,12 @@ jobs:
           python scripts/package_release.py --ort ort --out release --tag "${{ matrix.tag }}"
           python scripts/package_release.py --ort ort --out release --tag "${{ matrix.tag }}" --onedir
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ovml-runtime-${{ matrix.tag }}
           path: release/*
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: release/*
