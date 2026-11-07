@@ -1,0 +1,126 @@
+name: Build runtime
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.tag }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            tag: linux-x86_64
+          - os: windows-latest
+            tag: windows-x86_64
+          - os: macos-13
+            tag: macos-x86_64
+          - os: macos-14
+            tag: macos-arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake clang libclang-dev pkg-config libssl-dev
+
+      - name: Install macOS build dependencies
+        if: runner.os == 'macOS'
+        run: brew install cmake pkg-config
+
+      - name: Configure clang on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          libclang=$(find /usr/lib/llvm-* -name libclang.so 2>/dev/null | head -1)
+          echo "LIBCLANG_PATH=$(dirname "$libclang")" >> "$GITHUB_ENV"
+
+      - name: Configure clang on macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          echo "LIBCLANG_PATH=$(dirname "$(dirname "$(xcrun --find clang)")")/lib" >> "$GITHUB_ENV"
+
+      - name: Configure clang on Windows
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          echo 'LIBCLANG_PATH=C:\Program Files\LLVM\bin' >> "$GITHUB_ENV"
+
+      - name: Install ONNX Runtime wheel
+        run: python -m pip install --upgrade pip onnxruntime
+
+      - name: Stage ONNX Runtime library
+        shell: bash
+        run: |
+          python - <<'PY'
+          import shutil
+          import sys
+          from pathlib import Path
+
+          import onnxruntime
+
+          capi = Path(onnxruntime.__file__).parent / "capi"
+          out = Path("ort")
+          out.mkdir(exist_ok=True)
+          primary_name = {
+              "win32": "onnxruntime.dll",
+              "darwin": "libonnxruntime.dylib",
+          }.get(sys.platform, "libonnxruntime.so")
+
+          files = [p for p in sorted(capi.glob("libonnxruntime*")) if p.is_file()]
+          files += [p for p in sorted(capi.glob("onnxruntime*.dll")) if p.is_file()]
+          if not files:
+              raise SystemExit(f"no ONNX Runtime libraries in {capi}")
+
+          exact = [p for p in files if p.name == primary_name]
+          primary = exact[0] if exact else files[0]
+          shutil.copy2(primary, out / primary_name)
+          for path in files:
+              if path == primary or "pybind" in path.name:
+                  continue
+              shutil.copy2(path, out / path.name)
+          print(sorted(p.name for p in out.iterdir()))
+          PY
+
+      - name: Build
+        run: cargo build --release --locked
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: Package
+        shell: bash
+        run: |
+          python scripts/package_release.py --ort ort --out release --tag "${{ matrix.tag }}"
+          python scripts/package_release.py --ort ort --out release --tag "${{ matrix.tag }}" --onedir
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ovml-runtime-${{ matrix.tag }}
+          path: release/*
+
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: release/*
