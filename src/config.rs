@@ -154,11 +154,11 @@ impl Config {
     }
 }
 
-pub fn set_private_permissions(path: &Path) {
+pub fn set_private_permissions(_path: &Path) {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let _ = fs::set_permissions(path, fs::Permissions::from_mode(0o600));
+        let _ = fs::set_permissions(_path, fs::Permissions::from_mode(0o600));
     }
 }
 
