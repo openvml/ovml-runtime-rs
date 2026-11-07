@@ -186,3 +186,7 @@ esac
 echo "Installed: $BIN_DIR/ovml-runtime"
 echo "Models and cache: $DATA_DIR"
 echo "OpenVML Studio will detect the runtime automatically."
+echo ""
+echo "To use 'ovml-runtime' in this terminal, run:"
+echo "  source ~/.bashrc   (or ~/.zshrc for zsh)"
+echo "Or open a new terminal window."
