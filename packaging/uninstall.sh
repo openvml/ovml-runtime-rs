@@ -25,6 +25,25 @@ fi
 rm -f "$BIN_DIR/ovml-runtime"
 rm -rf "$LIB_DIR"
 
+# Remove OpenVML Runtime PATH entries from shell config files.
+remove_from_path() {
+    config_file="$1"
+    if [ -f "$config_file" ]; then
+        # Remove the OpenVML Runtime block (comment + export line).
+        # Use a temp file for safe in-place editing.
+        tmp_file="${config_file}.ovml_tmp"
+        awk '
+            /^# OpenVML Runtime$/ { skip=1; next }
+            skip && /^export PATH=/ { skip=0; next }
+            { print }
+        ' "$config_file" > "$tmp_file" && mv "$tmp_file" "$config_file"
+    fi
+}
+
+for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+    remove_from_path "$rc"
+done
+
 case "$PURGE" in
     1|true|yes|on)
         rm -rf "$DATA_DIR"
