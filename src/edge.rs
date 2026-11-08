@@ -12,7 +12,7 @@ use crate::audio::mp3_duration_ms;
 use crate::sentence::Word;
 use crate::voice::VoiceInfo;
 
-const RETRY_DELAYS_MS: [u64; 3] = [500, 1500, 3000];
+const RETRY_DELAYS_MS: [u64; 5] = [1000, 2000, 4000, 8000, 16000];
 const EDGE_SAMPLE_RATE: u32 = 24000;
 const CACHE_TTL_SECS: u64 = 24 * 3600;
 
