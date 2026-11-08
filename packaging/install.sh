@@ -35,6 +35,15 @@ for candidate in "$SRC_DIR"/libonnxruntime* "$SRC_DIR"/onnxruntime*.dll; do
     fi
 done
 
+# Piper phonemization needs the eSpeak-ng data directory beside the binary.
+if [ -d "$SRC_DIR/espeak-ng-data" ]; then
+    rm -rf "$LIB_DIR/espeak-ng-data"
+    cp -rf "$SRC_DIR/espeak-ng-data" "$LIB_DIR/"
+else
+    echo "Warning: espeak-ng-data not found in the package." >&2
+    echo "Piper voices will fail; only Edge TTS will work." >&2
+fi
+
 if ! ls "$LIB_DIR"/libonnxruntime* >/dev/null 2>&1; then
     echo "Warning: ONNX Runtime library not found in the package." >&2
     echo "The runtime will only work if onnxruntime is installed system-wide." >&2
@@ -52,6 +61,10 @@ if [ -z "\${ORT_DYLIB_PATH:-}" ]; then
             break
         fi
     done
+fi
+if [ -z "\${PIPER_ESPEAKNG_DATA_DIRECTORY:-}" ] && [ -d "\$DIR/espeak-ng-data" ]; then
+    PIPER_ESPEAKNG_DATA_DIRECTORY="\$DIR"
+    export PIPER_ESPEAKNG_DATA_DIRECTORY
 fi
 exec "\$DIR/ovml-runtime" "\$@"
 EOF
@@ -80,9 +93,11 @@ EOF
 
     if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
         systemctl --user daemon-reload >/dev/null 2>&1 || true
-        if systemctl --user enable --now ovml-runtime.service >/dev/null 2>&1; then
+        if systemctl --user enable ovml-runtime.service >/dev/null 2>&1; then
             echo "Autostart: systemd --user service ($unit)"
             rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/autostart/ovml-runtime.desktop"
+            # Start now if not already running.
+            systemctl --user start ovml-runtime.service >/dev/null 2>&1 || true
             return
         fi
     fi
@@ -186,6 +201,11 @@ esac
 echo "Installed: $BIN_DIR/ovml-runtime"
 echo "Models and cache: $DATA_DIR"
 echo "OpenVML Studio will detect the runtime automatically."
+echo ""
+echo "To disable autostart:"
+echo "  Linux:   systemctl --user disable --now ovml-runtime.service"
+echo "  macOS:   launchctl unload ~/Library/LaunchAgents/com.openvml.runtime.plist"
+echo "  Windows: delete the 'OVML Runtime' shortcut from the Startup folder"
 echo ""
 echo "To use 'ovml-runtime' in this terminal, run:"
 echo "  source ~/.bashrc   (or ~/.zshrc for zsh)"

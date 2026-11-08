@@ -39,5 +39,6 @@ or run `uninstall.sh` from the extracted package. Models and cache are kept; set
 
 - `ovml-runtime` — runtime binary
 - `libonnxruntime` — ONNX Runtime shared library used by Piper
+- `espeak-ng-data/` — eSpeak-ng data required for Piper phonemization
 - `install.sh` / `uninstall.sh` — Linux/macOS installers
 - `install.ps1` / `uninstall.ps1` — Windows installers
